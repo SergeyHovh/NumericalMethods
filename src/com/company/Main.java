@@ -9,6 +9,10 @@ import java.util.Arrays;
 public class Main {
 
     public static void main(String[] args) {
+        /*
+         * solving the y'' - y = 0 equation with y(0) = 1 and y'(0) = 0 initial conditions
+         * and getting y(1) with classical RK4 algorithm
+         */
         ODESolver solve = new RKClassic();
         double[][] initialValues = new double[][]{
                 {1, 0}
