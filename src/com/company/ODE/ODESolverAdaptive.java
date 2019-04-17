@@ -4,11 +4,11 @@ import java.util.Arrays;
 import java.util.Hashtable;
 
 public abstract class ODESolverAdaptive extends ODESolver {
-    private final double min = 1.0E-03;
-    private final double max = 9 * min;
-    private final double minErr = 1.0E-10;
-    private final double maxErr = 2 * minErr;
-    private double h = 0;
+    private final double min = 1.0E-10;
+    private final double max = 1;
+    private final double minErr = 1.0E-5;
+    private final double maxErr = 10 * minErr;
+    private double h = max / 2;
     private Hashtable<IVP, Hashtable<Double, Value>> odeValues = new Hashtable<>();
     private Value value = new Value();
 
@@ -27,22 +27,20 @@ public abstract class ODESolverAdaptive extends ODESolver {
         }
         IVP ivp = new IVP(system, x0, current);
         odeValues.putIfAbsent(ivp, new Hashtable<>());
-        int multiplier = 3;
+        int multiplier = 2;
         while (x0 < x) {
             adjustH();
             if (odeValues.get(ivp).containsKey(x0)) {
-                System.arraycopy(odeValues.get(ivp).get(x0).value, 0, y0, 0, order);
-                System.arraycopy(y0, 0, before, 0, order); // update
+                for (int i = 0; i < numberOfEquations; i++) {
+                    System.arraycopy(odeValues.get(ivp).get(x0).value[i], 0, y0[i], 0, order);
+                    System.arraycopy(y0[i], 0, before[i], 0, order); // update
+                }
                 x0 += odeValues.get(ivp).get(x0).h;
             } else { // computation
                 double[][][] keys = generateUnweighted(system, x0, y0, before, h, coefficients());
                 for (int j = 0; j < numberOfEquations; j++) {
                     System.arraycopy(rungeKutta(y0, keys, true)[j], 0, high[j], 0, order);
-                }
-                for (int j = 0; j < numberOfEquations; j++) {
                     System.arraycopy(before[j], 0, y0[j], 0, order); // reset
-                }
-                for (int j = 0; j < numberOfEquations; j++) {
                     System.arraycopy(rungeKutta(y0, keys, false)[j], 0, low[j], 0, order);
                 }
                 double error = Math.abs(high[0][0] - low[0][0]);
@@ -51,8 +49,6 @@ public abstract class ODESolverAdaptive extends ODESolver {
                 } else {
                     for (int j = 0; j < numberOfEquations; j++) {
                         System.arraycopy(high[j], 0, y0[j], 0, order);
-                    }
-                    for (int j = 0; j < numberOfEquations; j++) {
                         System.arraycopy(y0[j], 0, before[j], 0, order);
                     }
                     value.setValue(high);
@@ -136,21 +132,29 @@ public abstract class ODESolverAdaptive extends ODESolver {
             this.y0 = y0;
         }
 
-        @Override
-        public String toString() {
-            return x0 + " " + Arrays.toString(y0);
+        boolean valuesEqual(IVP ivp) {
+            for (int i = 0, y0Length = y0.length; i < y0Length; i++) {
+                double[] doubles = y0[i];
+                for (int j = 0, doublesLength = doubles.length; j < doublesLength; j++) {
+                    double aDouble = doubles[j];
+                    if (aDouble != ivp.y0[i][j]) return false;
+                }
+            }
+            return true;
         }
 
         @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof IVP) {
-                return
-                        this.x0 == ((IVP) obj).x0
-                                && Arrays.equals(this.y0, ((IVP) obj).y0)
-                                && Arrays.equals(this.ode, ((IVP) obj).ode);
-            } else {
-                return false;
-            }
+        public String toString() {
+            return x0 + " " + Arrays.deepToString(y0);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            IVP ivp = (IVP) o;
+            return Double.compare(ivp.x0, x0) == 0 &&
+                    valuesEqual(ivp);
         }
 
         @Override

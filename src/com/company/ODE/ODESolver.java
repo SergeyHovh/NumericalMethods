@@ -12,35 +12,24 @@ public abstract class ODESolver {
         this(1000);
     }
 
-    static void updateY(double[][] y0, double[][][] keys) {
-        for (double[][] key : keys) {
-            for (int j = 0; j < key.length; j++) {
-                double[] doubles1 = key[j];
-                for (int k = 0; k < doubles1.length; k++) {
-                    y0[j][k] += key[j][k];
-                }
-            }
+    public double[][] solveFirstOrder(double x0, double[] y0, double x, ODESystem[] odeSystem) {
+        double[][] initialValues = new double[odeSystem.length][1];
+        for (int i = 0; i < initialValues.length; i++) {
+            initialValues[i] = new double[]{y0[i]};
         }
+        return solveHighOrder(x0, initialValues, x, odeSystem);
     }
 
-    static void convertFromMatrix(ODESystem[][] system, double x0, double[][] y0, double[][] before, double h, double[][] coefficients, int numberOfEquations, int order, double[][][] K) {
-        for (int i = 0; i < K.length; i++) {
-            for (int j = 0; j < numberOfEquations; j++) {
-                for (int k = 0; k < order; k++) {
-                    for (int m = 0; m < K.length; m++) {
-                        y0[j][k] += coefficients[i][m + 1] * K[m][j][k];
-                    }
-                }
-            }
-            for (int j = 0; j < numberOfEquations; j++) {
-                for (int k = 0; k < order; k++) {
-                    K[i][j][k] = h * system[j][k].derivative(x0 + coefficients[i][0] * h, y0);
-                }
-            }
-            for (int j = 0; j < numberOfEquations; j++) {
-                System.arraycopy(before[j], 0, y0[j], 0, order); // reset
-            }
+    public double[][] solveSecondOrder(double x0, double[] y0, double[] yPrime0, double x, ODESystem[] odeSystem) {
+        double[][] initialValues = new double[odeSystem.length][2];
+        for (int i = 0, initialValuesLength = initialValues.length; i < initialValuesLength; i++) {
+            initialValues[i] = new double[]{y0[i], yPrime0[i]};
         }
+        return solveHighOrder(x0, initialValues, x, odeSystem);
+    }
+
+    public double[][] solveHighOrder(double x0, double[][] y0, double x, ODESystem odeSystem) {
+        return solveHighOrder(x0, y0, x, new ODESystem[]{odeSystem});
     }
 
     /**
@@ -50,8 +39,11 @@ public abstract class ODESolver {
      * @param ode y' = f(x, y) ode = f(x, y)
      * @return value of the function at point x
      */
-    public double[][] solveFirstOrder(double x0, double y0, double x, ODESystem[] ode) {
-        return solveHighOrder(x0, new double[][]{{y0}}, x, ode);
+    public double[][] solveFirstOrder(double x0, double y0, double x, ODESystem ode) {
+        double[][] initialValues = {
+                {y0}
+        };
+        return solveHighOrder(x0, initialValues, x, ode);
     }
 
     /**
@@ -62,8 +54,11 @@ public abstract class ODESolver {
      * @param ode     y'' = f(x, y, y') ode = f(x, y, y')
      * @return value of the function at point x
      */
-    public double[][] solveSecondOrder(double x0, double y0, double yPrime0, double x, ODESystem[] ode) {
-        return solveHighOrder(x0, new double[][]{{y0, yPrime0}}, x, ode);
+    public double[][] solveSecondOrder(double x0, double y0, double yPrime0, double x, ODESystem ode) {
+        double[][] initialValues = {
+                {y0, yPrime0}
+        };
+        return solveHighOrder(x0, initialValues, x, ode);
     }
 
     public double[][] solveHighOrder(double x0, double[][] y0, double x, ODESystem[] odeSystem) {
@@ -139,5 +134,36 @@ public abstract class ODESolver {
             }
         }
         return result;
+    }
+
+    void updateY(double[][] y0, double[][][] keys) {
+        for (double[][] aDouble : keys) {
+            for (int j = 0; j < aDouble.length; j++) {
+                double[] doubles1 = aDouble[j];
+                for (int k = 0; k < doubles1.length; k++) {
+                    y0[j][k] += aDouble[j][k];
+                }
+            }
+        }
+    }
+
+    void convertFromMatrix(ODESystem[][] system, double x0, double[][] y0, double[][] before, double h, double[][] coefficients, int numberOfEquations, int order, double[][][] K) {
+        for (int i = 0; i < K.length; i++) {
+            for (int j = 0; j < numberOfEquations; j++) {
+                for (int k = 0; k < order; k++) {
+                    for (int m = 0; m < K.length; m++) {
+                        y0[j][k] += coefficients[i][m + 1] * K[m][j][k];
+                    }
+                }
+            }
+            for (int j = 0; j < numberOfEquations; j++) {
+                for (int k = 0; k < order; k++) {
+                    K[i][j][k] = h * system[j][k].derivative(x0 + coefficients[i][0] * h, y0);
+                }
+            }
+            for (int j = 0; j < numberOfEquations; j++) {
+                System.arraycopy(before[j], 0, y0[j], 0, order); // reset
+            }
+        }
     }
 }
